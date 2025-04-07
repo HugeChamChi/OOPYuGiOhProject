@@ -28,6 +28,7 @@ public class NightmareChamber : SpellCard
     }
 }
 
+
 // 어둠의 엄습 카드 구현
 public class DarknessApproaches : SpellCard
 {

@@ -76,6 +76,5 @@ public abstract class MonsterCard : Card
         public BlueEyesWhiteDragon()
             : base("푸른 눈의 백룡", 3000, 2500,
                 "파괴적인 공격력을 지닌 전설의 드래곤")
-        {
-        }
+        { }
     }

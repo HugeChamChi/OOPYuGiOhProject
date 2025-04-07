@@ -29,5 +29,6 @@
             Defense = defense;
             Description = description;
         }
+        
     }
 }
