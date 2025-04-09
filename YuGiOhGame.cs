@@ -42,7 +42,7 @@
             };
 
             
-            Context.UI = new UIManager(playerHand, monsterZone, magicZone);
+            Context.UI = new UIManager(Context);
         }
 
         
@@ -75,18 +75,21 @@
 
                 CurrentPlayer = new Player
                 {
+                    LifePoints = 8000,
                     Hand = this.playerHand,
-                    MonsterZone = this.monsterZone,
-                    MagicZone = this.magicZone
+                    MonsterZone = new List<Card>(5) { null, null, null, null, null },
+                    MagicZone = new List<Card>(5) { null, null, null, null, null }
                 },
                 Opponent = new Player()
                 {
+                    LifePoints = 8000,
                     Hand = new List<Card>(),
                     MonsterZone = new List<Card>(5) { null, null, null, null, null },
                     MagicZone = new List<Card>(5) { null, null, null, null, null }
                 }
             };
 
+            Context.UI = new UIManager(Context);
         }
         public void UseCard(int handIndex)
         {
@@ -135,13 +138,13 @@
     public class Player
     {
         public int LifePoints { get; set; }
-
+        
         public void SetLifePoint(int value)
         {
             LifePoints = value;
         }
-        public List<Card> Hand { get; set; }
-        public List<Card> MonsterZone { get; set; }
-        public List<Card> MagicZone { get; set; }
+        public List<Card> Hand { get; set; } = new List<Card>();
+        public List<Card> MonsterZone { get; set; } = new List<Card>(Enumerable.Repeat<Card>(null, 5));
+        public List<Card> MagicZone { get; set; } = new List<Card>(Enumerable.Repeat<Card>(null, 5));
     }
 }

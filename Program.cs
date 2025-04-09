@@ -3,10 +3,12 @@ class Program
 {
     static void Main(string[] args)
     {
+        Console.SetWindowSize(120, 60);
+        Console.SetBufferSize(120, 60);
+        
         YuGiOhGame game = new YuGiOhGame();
         game.InitializeGame();
-
-        Console.WriteLine("유희왕 게임에 오신 것을 환영합니다!");
+        
         
         while (true)
         {
