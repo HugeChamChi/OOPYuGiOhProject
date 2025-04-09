@@ -2,14 +2,20 @@
 
 public abstract class MonsterCard : Card
     {
+        public void ModifyAttack(int amount)
+        {
+            Attack += amount;
+        }
+
+        
         public enum BattlePosition {FaceUpAttack, FaceUpDefense, FaceDownDefense}
         public BattlePosition Position { get; protected set; }
         
         
-        public override string Type { get; protected set; } = "몬스터";
+      
 
         protected MonsterCard(string name, int attack, int defense, string description)
-            : base(name, "몬스터", attack, defense, description)
+            : base(name, "몬스터", attack, defense, description) 
         {
             Position = BattlePosition.FaceUpAttack;
         }
@@ -46,7 +52,7 @@ public abstract class MonsterCard : Card
         {
         }
 
-        public override void Activate()
+        public override void Activate(GameContext context)
         {
             Console.WriteLine($"{Name}의 효과가 발동됩니다!");
             Console.WriteLine("뒷면 수비표시 몬스터를 파괴합니다.");
@@ -62,7 +68,7 @@ public abstract class MonsterCard : Card
         {
         }
 
-        public override void Activate()
+        public override void Activate(GameContext context)
         {
             Console.WriteLine($"{Name}의 효과가 발동됩니다!");
             Console.WriteLine("공격을 하기위하여 몬스터 1장을 릴리스합니다.");

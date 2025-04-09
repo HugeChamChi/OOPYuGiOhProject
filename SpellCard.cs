@@ -11,8 +11,13 @@ public abstract class SpellCard : Card
 
     public SpellType SpellCardType { get; protected set; }
 
-    public SpellCard(string name, SpellType spellType, string description)
-        : base(name, "마법", description)
+    protected SpellCard(string name, SpellType spellType, string description)
+        : base
+        (
+            name: name, 
+            type: "마법", 
+            description: description
+        )
     {
         SpellCardType = spellType;
     }
@@ -21,10 +26,29 @@ public abstract class SpellCard : Card
 // 악몽의 고문실 카드 구현
 public class NightmareChamber : SpellCard
 {
+    private GameContext activeContext;
+
     public NightmareChamber()
         : base("악몽의 고문실", SpellType.Continuous,
-            "상대 라이프에 전투 데미지 이외의 데미지를 줄 때마다, 상대 라이프에 300 포인트 데미지를 준다. '악몽의 고문실'의 효과로는 이 카드의 효과는 적용되지 않는다.")
+            "상대 라이프에 전투 데미지 이외의 데미지를 줄 때마다, 상대 라이프에 300 포인트 데미지를 준다.")
     {
+    }
+
+    public override void Activate(GameContext context)
+    {
+        activeContext = context;
+        context.NonBattleDamageOccured += HandleNonBattleDamage;
+        Console.WriteLine($"{Name} 발동!");
+    }
+
+    private void HandleNonBattleDamage(Card damageSource, int originalDamage)
+    {
+        // 자신이 발생시킨 데미지는 무시
+        if (damageSource == this) return;
+
+        // 추가 데미지 적용
+        activeContext.Opponent.LifePoints -= 300;
+        Console.WriteLine($"[{Name}] {damageSource.Name}의 데미지에 300 추가");
     }
 }
 
@@ -38,33 +62,44 @@ public class DarknessApproaches : SpellCard
     {
     }
 
-    public override void Activate();
+    public override void Activate(GameContext context)
     {
         Console.WriteLine($"{Name}이(가) 발동.");
 
-        // 패 2장이 아닐경우.
-        if (player.Hand.Count < 2)
+        if (context.CurrentPlayer.Hand.Count < 2) 
         {
-            Console.WriteLine("패가 2장 미만이라 발동할 수 없습니다.");
+            Console.WriteLine("패가 부족합니다.");
             return;
         }
 
-        // 패 2장 선택해서 버리기
-        for (int i = 0; i < 2; i++)
+        context.CurrentPlayer.Hand = context.CurrentPlayer.Hand
+            .Skip(2)
+            .ToList();
+
+        // 상대 몬스터 뒤집기
+        MonsterCard targetMonster = null;
+        foreach (Card card in context.Opponent.MonsterZone)
         {
-            //패 2장 선택 버리기.
+            if (card is MonsterCard monster && 
+                monster.Position == MonsterCard.BattlePosition.FaceUpAttack)
+            {
+                targetMonster = monster;
+                break;
+            }
         }
 
-
-        // 앞면표시몬스터 예외처리.
-        if (faceUpMonsters.Count == 0)
+        if (targetMonster != null)
         {
-            Console.WriteLine("앞면 표시 몬스터가 없어 효과를 발동할 수 없습니다.");
-            return;
+            targetMonster.SetPosition(MonsterCard.BattlePosition.FaceDownDefense);
+            Console.WriteLine($"{targetMonster.Name}을 뒷면 표시로 변경");
         }
+        else
+        {
+            Console.WriteLine("대상 몬스터가 없습니다!");
+        }
+        
     }
 }
-
 // 검은 펜던트 카드 구현
 public class BlackPendant : SpellCard
 {
@@ -76,36 +111,71 @@ public class BlackPendant : SpellCard
     {
     }
 
-    public override void Activate()
+
+    public override void Activate(GameContext context)
     {
         Console.WriteLine($"{Name}이(가) 발동.");
 
         // 장착할 몬스터가 없을경우 예외처리.
-        if (monsters.Count == 0)
+        MonsterCard target = null;
+        foreach (Card card in context.CurrentPlayer.MonsterZone)
         {
-            Console.WriteLine("장착할 몬스터가 없습니다.");
+            if (card is MonsterCard monster && 
+                monster.Position == MonsterCard.BattlePosition.FaceUpAttack)
+            {
+                target = monster;
+                break;
+            }
+        }
+
+        if (target == null)
+        {
+            Console.WriteLine("장착할 몬스터가 없습니다!");
             return;
         }
 
 
         // 공격력 증가
-        equippedMonster.Attack += 500;
+        equippedMonster = target;
+        equippedMonster.ModifyAttack(500);
+        Console.WriteLine($"{equippedMonster.Name} 공격력 500 증가");
     }
 }
 
 // 공격 봉인 카드 구현
-public class SwordsOfRevealingLight : SpellCard
+public class BlockAttack : SpellCard
 {
-    private int remainingTurns = 3;
-
-    public SwordsOfRevealingLight()
-        : base("공격 봉인", SpellType.Continuous,
-            "이 카드는 발동 후, 필드에 계속해서 남고, 상대 턴에서 세어서 3턴 후의 상대 엔드 페이즈에 파괴된다. 이 카드의 발동 시, 상대 필드에 뒷면 표시 몬스터가 존재할 경우, 그 몬스터를 전부 앞면 표시로 한다. 이 카드가 마법 & 함정 존에 존재하는 한, 상대 몬스터는 공격 선언할 수 없다.")
+    public BlockAttack()
+        : base("공격 봉인", SpellType.Normal,
+            "상대 필드의 공격 표시 몬스터 1장을 대상으로 하고 발동할 수 있다. 그 상대의 공격 표시 몬스터를 앞면 수비 표시로 한다.")
     {
     }
 
-    public override void Activate()
+    public override void Activate(GameContext context)
     {
         Console.WriteLine($"{Name}이(가) 발동.");
+
+        // 상대 필드에서 공격 표시 몬스터 찾기
+        MonsterCard targetMonster = null;
+        foreach (Card card in context.Opponent.MonsterZone)
+        {
+            if (card is MonsterCard monster && 
+                monster.Position == MonsterCard.BattlePosition.FaceUpAttack)
+            {
+                targetMonster = monster;
+                break;
+            }
+        }
+
+        // 대상 몬스터가 없으면 효과 발동 불가
+        if (targetMonster == null)
+        {
+            Console.WriteLine("대상으로 지정할 공격 표시 몬스터가 없습니다.");
+            return;
+        }
+
+        // 몬스터를 앞면 수비 표시로 변경
+        targetMonster.SetPosition(MonsterCard.BattlePosition.FaceUpDefense);
+        Console.WriteLine($"{targetMonster.Name}이(가) 앞면 수비 표시로 전환되었습니다.");
     }
 }
