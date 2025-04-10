@@ -149,4 +149,5 @@
         public List<Card> MonsterZone { get; set; } = new List<Card>(Enumerable.Repeat<Card>(null, 5));
         public List<Card> MagicZone { get; set; } = new List<Card>(Enumerable.Repeat<Card>(null, 5));
     }
+    
 }

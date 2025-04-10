@@ -13,11 +13,11 @@
         private const int OpponentMagicZone = 4;
         
         private readonly int[] zoneOrder = new int[] {
-            OpponentMagicZone,    // 4: 상대 마법 존
-            OpponentMonsterZone,  // 3: 상대 몬스터 존
-            PlayerMonsterZone,    // 1: 플레이어 몬스터 존
-            PlayerMagicZone,      // 2: 플레이어 마법 존
-            PlayerHandZone        // 0: 플레이어 핸드
+            PlayerHandZone,
+            PlayerMagicZone,
+            PlayerMonsterZone,
+            OpponentMonsterZone,
+            OpponentMagicZone
         };
         
         private IEnumerable<string> SplitText(string text, int maxLength)
@@ -34,7 +34,29 @@
         {
             this.Context = context;
         }
+        public List<MonsterCard> ShowTributeSelection(List<MonsterCard> candidates, int required)
+        {
+            Console.Clear();
+            Console.WriteLine($"┌── 릴리스 필요: {required}장 ──");
+    
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                var monster = candidates[i];
+                Console.WriteLine($"[{i+1}] {monster.Name} (Lv.{monster.Level})");
+            }
+            Console.WriteLine("└───────────────────────");
 
+            var selected = new List<MonsterCard>();
+            while (selected.Count < required)
+            {
+                Console.Write($"선택 ({required - selected.Count}장 남음): ");
+                if (int.TryParse(Console.ReadLine(), out int index) && index > 0 && index <= candidates.Count)
+                {
+                    selected.Add(candidates[index-1]);
+                }
+            }
+            return selected;
+        }
         
 
         // zone: 0=핸드, 1=몬스터존, 2=마법존 / position: 해당 존 내 위치)
@@ -84,8 +106,10 @@
         }
         private void SummonCard()
         {
-            if (selectedCard == null || cursor.zone != 0) return;
-
+            if (selectedCard == null || cursor.zone != PlayerHandZone) return;
+            
+            int handIndex = cursor.position;
+            
             // 몬스터 카드 소환
             if (selectedCard is MonsterCard)
             {
@@ -94,7 +118,7 @@
                     if (Context.CurrentPlayer.MonsterZone[i] == null)
                     {
                         Context.CurrentPlayer.MonsterZone[i] = selectedCard;
-                        Context.CurrentPlayer.Hand.Remove(selectedCard);
+                        Context.CurrentPlayer.Hand[handIndex] = null;
                         selectedCard = null;
                         return;
                     }
@@ -108,7 +132,7 @@
                     if (Context.CurrentPlayer.MagicZone[i] == null)
                     {
                         Context.CurrentPlayer.MagicZone[i] = selectedCard;
-                        Context.CurrentPlayer.Hand.Remove(selectedCard);
+                        Context.CurrentPlayer.Hand[handIndex] = null;
                         selectedCard = null;
                         return;
                     }
@@ -276,24 +300,24 @@
             if (card != null)
             {
                 // 카드 이름 출력
-                Console.SetCursorPosition(descriptionLeft, 4);
+                Console.SetCursorPosition(descriptionLeft, 2);
                 Console.Write($"카드 이름: {card.Name}");
 
                 // 카드 타입 출력
-                Console.SetCursorPosition(descriptionLeft, 5);
+                Console.SetCursorPosition(descriptionLeft, 3);
                 Console.Write($"카드 타입: {card.Type}");
 
                 // 공격력 및 방어력 출력 (몬스터 카드인 경우)
                 if (card is MonsterCard monster)
                 {
-                    Console.SetCursorPosition(descriptionLeft, 6);
+                    Console.SetCursorPosition(descriptionLeft, 4);
                     Console.Write($"공격력: {monster.Attack}");
-                    Console.SetCursorPosition(descriptionLeft, 7);
+                    Console.SetCursorPosition(descriptionLeft, 5);
                     Console.Write($"방어력: {monster.Defense}");
                 }
                 
                 
-                Console.SetCursorPosition(descriptionLeft, 20);
+                Console.SetCursorPosition(descriptionLeft, 10);
                 Console.Write("효과: ");
                 string[] wrappedDescription = SplitText(card.Description, 30).ToArray();
 
@@ -306,7 +330,7 @@
 
                 for (int i = 1; i < wrappedDescription.Length; i++)
                 {
-                    Console.SetCursorPosition(descriptionLeft + 4, 20 + i); 
+                    Console.SetCursorPosition(descriptionLeft + 4, 10 + i); 
                     Console.Write(wrappedDescription[i]);
                 }
             }
@@ -342,9 +366,6 @@
                 ? targetZone[cursor.position] ?? new EmptyCard()
                 : new EmptyCard();
         }
-
-// 빈 카드를 나타내는 클래스
-        
 
     }
 }
