@@ -4,6 +4,31 @@
     {
         private GameContext Context;
         private Card selectedCard;
+        
+        // 존 인덱스 정의
+        private const int PlayerHandZone = 0;
+        private const int PlayerMonsterZone = 1;
+        private const int PlayerMagicZone = 2;
+        private const int OpponentMonsterZone = 3;
+        private const int OpponentMagicZone = 4;
+        
+        private readonly int[] zoneOrder = new int[] {
+            OpponentMagicZone,    // 4: 상대 마법 존
+            OpponentMonsterZone,  // 3: 상대 몬스터 존
+            PlayerMonsterZone,    // 1: 플레이어 몬스터 존
+            PlayerMagicZone,      // 2: 플레이어 마법 존
+            PlayerHandZone        // 0: 플레이어 핸드
+        };
+        
+        private IEnumerable<string> SplitText(string text, int maxLength)
+        {
+            if (string.IsNullOrEmpty(text)) yield break;
+
+            for (int i = 0; i < text.Length; i += maxLength)
+            {
+                yield return text.Substring(i, Math.Min(maxLength, text.Length - i));
+            }
+        }
        
         public UIManager(GameContext context)
         {
@@ -12,7 +37,7 @@
 
         
 
-        // 2D 커서 시스템 (zone: 0=핸드, 1=몬스터존, 2=마법존 / position: 해당 존 내 위치)
+        // zone: 0=핸드, 1=몬스터존, 2=마법존 / position: 해당 존 내 위치)
         private (int zone, int position) cursor = (0, 0); 
     
         public void UpdateCursor(ConsoleKey key)
@@ -28,12 +53,21 @@
                     cursor = (cursor.zone, Math.Min(maxPosition, cursor.position + 1));
                     break;
                 
+               
                 case ConsoleKey.UpArrow:
-                    cursor = (Math.Max(0, cursor.zone - 1), cursor.position);
+                    int currentUpIndex = Array.IndexOf(zoneOrder, cursor.zone);
+                    if (currentUpIndex < zoneOrder.Length - 1)
+                    {
+                        cursor.zone = zoneOrder[currentUpIndex + 1];
+                    }
                     break;
                 
                 case ConsoleKey.DownArrow:
-                    cursor = (Math.Min(2, cursor.zone + 1), cursor.position);
+                    int currentDownIndex = Array.IndexOf(zoneOrder, cursor.zone);
+                    if (currentDownIndex > 0)
+                    {
+                        cursor.zone = zoneOrder[currentDownIndex - 1];
+                    }
                     break;
                 case ConsoleKey.Enter:
                     SelectCard();
@@ -104,6 +138,7 @@
         private void DrawField()
         {
             const int zoneSize = 5;
+            
             Console.WriteLine(
                 "┌─────────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────┐");
             Console.WriteLine(
@@ -112,10 +147,13 @@
             Console.Write("│    ");
             for (int i = 0; i < zoneSize; i++)
             {
-                bool isSelected = cursor.zone == 2 && cursor.position == i;
-                string display = i < Context.Opponent.MagicZone.Count 
-                    ? (Context.Opponent.MagicZone[i]?.Name ?? "[Empty]") 
-                    : "[Empty]";
+                bool isSelected = cursor.zone == OpponentMagicZone && cursor.position == i;
+                string display = Context.Opponent.MagicZone[i] switch
+                {
+                    SpellCard card => "[Spell]", 
+                    null => "[Empty]",             
+                    _ => "[Unknown]"               
+                };
                 Console.Write(isSelected ? $"▶{display,-11}◀" : $"{display,-13}");
             }
 
@@ -132,10 +170,16 @@
             Console.Write("│    ");
             for (int i = 0; i < zoneSize; i++)
             {
-                bool isSelected = cursor.zone == 1 && cursor.position == i;
-                string display = i < Context.Opponent.MonsterZone.Count 
-                    ? (Context.Opponent.MonsterZone[i]?.Name ?? "[Empty]") 
-                    : "[Empty]";
+                bool isSelected = cursor.zone == OpponentMonsterZone && cursor.position == i;
+                
+                
+                string display = Context.Opponent.MonsterZone[i] switch
+                {
+                    MonsterCard card => "[Monster]", 
+                    null => "[Empty]",             
+                    _ => "[Unknown]"               
+                };
+
                 Console.Write(isSelected ? $"▶{display,-11}◀" : $"{display,-13}");
             }
 
@@ -157,10 +201,13 @@
             Console.Write("│    ");
             for (int i = 0; i < zoneSize; i++)
             {
-                bool isSelected = cursor.zone == 1 && cursor.position == i;
-                string display = i < Context.CurrentPlayer.MonsterZone.Count 
-                    ? (Context.CurrentPlayer.MonsterZone[i]?.Name ?? "[Empty]") 
-                    : "[Empty]";
+                bool isSelected = cursor.zone == PlayerMonsterZone && cursor.position == i;
+                string display = Context.CurrentPlayer.MonsterZone[i] switch
+                {
+                    MonsterCard card => "[Monster]", 
+                    null => "[Empty]",             
+                    _ => "[Unknown]"               
+                };
                 Console.Write(isSelected ? $"▶{display,-11}◀" : $"{display,-13}");
             }
 
@@ -175,10 +222,13 @@
             Console.Write("│    ");
             for (int i = 0; i < zoneSize; i++)
             {
-                bool isSelected = cursor.zone == 2 && cursor.position == i;
-                string display = i < Context.CurrentPlayer.MagicZone.Count 
-                    ? (Context.CurrentPlayer.MagicZone[i]?.Name ?? "[Empty]") 
-                    : "[Empty]";
+                bool isSelected = cursor.zone == PlayerMagicZone && cursor.position == i;
+                string display = Context.CurrentPlayer.MagicZone[i] switch
+                {
+                    SpellCard card => "[Spell]", 
+                    null => "[Empty]",             
+                    _ => "[Unknown]"               
+                };
                 Console.Write(isSelected ? $"▶{display,-11}◀" : $"{display,-13}");
             }
 
@@ -188,48 +238,82 @@
 
             Console.WriteLine(
                 "└─────────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────┘");
+            
+            // 플레이어 핸드 출력
+
+            Console.WriteLine("                 [ P  L  A  Y  E  R  H  A  N  D ]                                                                        ");
+            Console.WriteLine(
+                "┌─────────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────┐");
+            Console.WriteLine(
+                "│                                                                     │                                                               │");
+            Console.Write("│    ");
+            for (int i = 0; i < Context.CurrentPlayer.Hand.Count; i++)
+            {
+                bool isSelected = cursor.zone == PlayerHandZone && cursor.position == i;
+                string display = Context.CurrentPlayer.Hand[i] != null 
+                
+                    ?  "[Card]"
+                    
+                    : "[Empty]";
+                
+                Console.Write(isSelected ? $"▶{display,-11}◀" : $"{display,-13}");
+            }
+            
+            Console.WriteLine("│                                                               │");
+            Console.WriteLine(
+                "│                                                                     │                                                               │");
+            Console.WriteLine(
+                "└─────────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────┘");
         }
 
 
         private void DrawCardDescription()
         {
             Card card = GetSelectedCard();
-            int baseLine = 3; // 기본 시작 위치
-    
-            // 콘솔 높이 확인
-            int maxLine = Console.WindowHeight - 5; 
+            int descriptionLeft = 72;
+            
 
-            // 카드 이름 출력 (최대 줄 번호를 초과하지 않도록 제한)
-            Console.SetCursorPosition(33, Math.Min(baseLine, maxLine));
             if (card != null)
             {
-                Console.WriteLine($"카드 이름: {card.Name}");
-        
-                // 카드 타입 출력 (최대 줄 번호를 초과하지 않도록 제한)
-                Console.SetCursorPosition(33, Math.Min(baseLine + 2, maxLine));
-                Console.WriteLine($"카드 타입: {card.Type}");
-        
-                // 카드 효과 출력 (최대 줄 번호를 초과하지 않도록 제한)
-                Console.SetCursorPosition(33, Math.Min(baseLine + 4, maxLine));
-                Console.WriteLine("효과:");
-        
-                Console.SetCursorPosition(33, Math.Min(baseLine + 5, maxLine));
-                Console.WriteLine(card.Description);
+                // 카드 이름 출력
+                Console.SetCursorPosition(descriptionLeft, 4);
+                Console.Write($"카드 이름: {card.Name}");
 
-                if (card.Type == "몬스터")
+                // 카드 타입 출력
+                Console.SetCursorPosition(descriptionLeft, 5);
+                Console.Write($"카드 타입: {card.Type}");
+
+                // 공격력 및 방어력 출력 (몬스터 카드인 경우)
+                if (card is MonsterCard monster)
                 {
-                    
-                    Console.SetCursorPosition(33, Math.Min(baseLine + 7, maxLine));
-                    Console.WriteLine($"공격력: {card.Attack}");
+                    Console.SetCursorPosition(descriptionLeft, 6);
+                    Console.Write($"공격력: {monster.Attack}");
+                    Console.SetCursorPosition(descriptionLeft, 7);
+                    Console.Write($"방어력: {monster.Defense}");
+                }
+                
+                
+                Console.SetCursorPosition(descriptionLeft, 20);
+                Console.Write("효과: ");
+                string[] wrappedDescription = SplitText(card.Description, 30).ToArray();
 
-                    Console.SetCursorPosition(33, Math.Min(baseLine + 9, maxLine));
-                    Console.WriteLine($"방어력: {card.Defense}");
+
+                if (wrappedDescription.Length > 0)
+                {
+                    Console.Write(wrappedDescription[0]); 
+                }
+
+
+                for (int i = 1; i < wrappedDescription.Length; i++)
+                {
+                    Console.SetCursorPosition(descriptionLeft + 4, 20 + i); 
+                    Console.Write(wrappedDescription[i]);
                 }
             }
             else
             {
                 // 빈 슬롯 선택 시 메시지 출력
-                Console.SetCursorPosition(33, Math.Min(baseLine, maxLine));
+                Console.SetCursorPosition(descriptionLeft, 3);
                 Console.WriteLine("카드 정보 없음");
             }
         }
@@ -238,15 +322,29 @@
         private void DrawInstructions()
         {
             // 하단 안내 메시지 표시
-            int instructionTop = Math.Max(Console.WindowHeight - 3, 0);
+            int instructionTop = Math.Max(Console.WindowHeight - 4, 0);
             Console.SetCursorPosition(0, instructionTop);
             Console.WriteLine("이동: ←→, 선택: Enter, 소환: S, 종료: ESC");
         }
 
         private Card GetSelectedCard()
         {
-            // 선택된 카드 반환 로직 구현
-            return null; // 예시로 null 반환
+            List<Card> targetZone = cursor.zone switch {
+                PlayerHandZone => Context.CurrentPlayer.Hand,
+                PlayerMonsterZone => Context.CurrentPlayer.MonsterZone,
+                PlayerMagicZone => Context.CurrentPlayer.MagicZone,
+                OpponentMonsterZone => Context.Opponent.MonsterZone,
+                OpponentMagicZone => Context.Opponent.MagicZone,
+                _ => new List<Card>()
+            };
+    
+            return (cursor.position >= 0 && cursor.position < targetZone.Count) 
+                ? targetZone[cursor.position] ?? new EmptyCard()
+                : new EmptyCard();
         }
+
+// 빈 카드를 나타내는 클래스
+        
+
     }
 }

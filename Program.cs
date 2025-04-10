@@ -3,8 +3,8 @@ class Program
 {
     static void Main(string[] args)
     {
-        Console.SetWindowSize(120, 60);
-        Console.SetBufferSize(120, 60);
+        Console.SetWindowSize(120, 50);
+        Console.SetBufferSize(120, 50);
         
         YuGiOhGame game = new YuGiOhGame();
         game.InitializeGame();

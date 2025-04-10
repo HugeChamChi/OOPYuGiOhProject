@@ -22,8 +22,13 @@
             Attack = attack;
             Defense = defense;
         }
-
         public virtual void Activate(GameContext context) {}
+    }
+    public class EmptyCard : Card
+    {
+        public EmptyCard() : base("[Empty]", "None", 0,0,"빈 슬롯입니다.")
+        {
+        }
     }
 
 }
